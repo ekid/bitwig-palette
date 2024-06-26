@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitwig Color Palette Generator</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            flex-direction: column;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 100vw;
+            height: 80vh;
+        }
+        .square {
+            width: 100%;
+            height: 100%;
+        }
+        .button-container {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="button-container">
+        <button id="saveButton">Save as PNG</button>
+    </div>
+    <script>
+        // Prompt the user for three colors
+        const startColor = prompt("Enter the start color (e.g., #FF0000):");
+        const middleColor = prompt("Enter the middle color (e.g., #00FF00):");
+        const endColor = prompt("Enter the end color (e.g., #0000FF):");
+
+        // Function to generate the gradient color
+        function generateGradient(start, middle, end, step, totalSteps) {
+            function hexToRgb(hex) {
+                const bigint = parseInt(hex.substring(1), 16);
+                const r = (bigint >> 16) & 255;
+                const g = (bigint >> 8) & 255;
+                const b = bigint & 255;
+                return [r, g, b];
+            }
+
+            function rgbToHex(r, g, b) {
+                return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+            }
+
+            const startRgb = hexToRgb(start);
+            const middleRgb = hexToRgb(middle);
+            const endRgb = hexToRgb(end);
+
+            let resultRgb = [0, 0, 0];
+            if (step < totalSteps / 2) {
+                for (let i = 0; i < 3; i++) {
+                    resultRgb[i] = startRgb[i] + (middleRgb[i] - startRgb[i]) * (step / (totalSteps / 2));
+                }
+            } else {
+                for (let i = 0; i < 3; i++) {
+                    resultRgb[i] = middleRgb[i] + (endRgb[i] - middleRgb[i]) * ((step - totalSteps / 2) / (totalSteps / 2));
+                }
+            }
+            return rgbToHex(Math.round(resultRgb[0]), Math.round(resultRgb[1]), Math.round(resultRgb[2]));
+        }
+
+        // Function to darken a color
+        function darkenColor(color, factor) {
+            function hexToRgb(hex) {
+                const bigint = parseInt(hex.substring(1), 16);
+                const r = (bigint >> 16) & 255;
+                const g = (bigint >> 8) & 255;
+                const b = bigint & 255;
+                return [r, g, b];
+            }
+
+            function rgbToHex(r, g, b) {
+                return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+            }
+
+            const rgb = hexToRgb(color);
+            const darkenedRgb = rgb.map(channel => Math.max(0, Math.min(255, channel * factor)));
+            return rgbToHex(Math.round(darkenedRgb[0]), Math.round(darkenedRgb[1]), Math.round(darkenedRgb[2]));
+        }
+
+        // Create a container for the squares
+        const container = document.createElement('div');
+        container.className = 'container';
+        document.body.insertBefore(container, document.querySelector('.button-container'));
+
+        // Create the 27 squares
+        const totalSquares = 27;
+        const totalRows = 3;
+        const squaresPerRow = totalSquares / totalRows;
+        const darkeningFactor = 0.8; // Factor to darken the color
+
+        let previousRowColors = [];
+        for (let row = 0; row < totalRows; row++) {
+            for (let col = 0; col < squaresPerRow; col++) {
+                const square = document.createElement('div');
+                square.className = 'square';
+                let color;
+
+                if (row === 0) {
+                    // First row: gradient colors
+                    color = generateGradient(startColor, middleColor, endColor, col, squaresPerRow);
+                    previousRowColors.push(color);
+                } else {
+                    // Other rows: darken the previous row colors
+                    color = darkenColor(previousRowColors[col], darkeningFactor);
+                    previousRowColors[col] = color;
+                }
+
+                square.style.backgroundColor = color;
+                container.appendChild(square);
+            }
+        }
+
+        // Function to save the grid as a PNG
+        function saveAsPNG() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const containerStyles = getComputedStyle(container);
+            const squareStyles = getComputedStyle(container.firstChild);
+            canvas.width = parseInt(containerStyles.width);
+            canvas.height = parseInt(containerStyles.height);
+
+            for (let i = 0; i < container.children.length; i++) {
+                const square = container.children[i];
+                const color = getComputedStyle(square).backgroundColor;
+                context.fillStyle = color;
+                const x = (i % squaresPerRow) * parseInt(squareStyles.width);
+                const y = Math.floor(i / squaresPerRow) * parseInt(squareStyles.height);
+                context.fillRect(x, y, parseInt(squareStyles.width), parseInt(squareStyles.height));
+            }
+
+            const link = document.createElement('a');
+            link.download = 'Bitwig-Color-Palette.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        document.getElementById('saveButton').addEventListener('click', saveAsPNG);
+    </script>
+</body>
+</html>
